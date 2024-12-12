@@ -3,14 +3,23 @@ import pandas as pd
 import numpy as np
 import time
 import requests
+import os
+import json
 # Địa chỉ API của Ollama
 OLLAMA_URL = "http://127.0.0.1:11434/api/chat"
 headers = {"Content-Type": "application/json"}
 
-# Mô hình bạn muốn sử dụng
+
 # model = "llama3.1:8b"
 model = "llama3.2:3b"
 
+DATA_DIR="chat_data"
+
+# Initialize session state for messages
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+st.title("Interface Chatbox with Streamlit")
 def query_ollama(prompt , history):
     payload = {
         "model": model,
@@ -68,21 +77,93 @@ if prompt:
                     "role": "assistant",
                     "content": response
                 })
+
+
+
+#--------------------- load file from folder to select box -----------------------
+chat_files = os.listdir(DATA_DIR)
+
+chat_files = [f for f in chat_files if f.endswith('.json')]
+
+options = ["không dùng dữ liệu"]  + chat_files
+
+add_selectbox = st.sidebar.selectbox(
+    'How would you like to be contacted?',
+    options
+)
+
+#--------------------- /load file from folder to select box -----------------------
+
+
+
+#--------------------- create file.json -----------------------
+add_data = st.sidebar.text_input("nhập tên file", key="file_data")
+
+if st.sidebar.button("Tạo tệp mới"):
+    if add_data:
+        new_file_path = os.path.join(DATA_DIR, f"{add_data}.json")
+        if os.path.exists(new_file_path):  # Kiểm tra nếu tệp đã tồn tại
+            st.sidebar.error(f"Tệp đã tồn tại: {new_file_path}")
+        else:
+            with open(new_file_path, 'w') as new_file:
+                json.dump(st.session_state.messages, new_file)  # Ghi danh sách dưới dạng JSON
+            st.sidebar.success(f"Tệp đã được tạo: {new_file_path}")
+    else:
+        st.sidebar.error("Vui lòng nhập tên tệp")
+#--------------------- /create file.json -----------------------
+
+        
+
+               
+#--------------------- load chat history on interface -----------------------
+
+st.sidebar.button("Xóa tệp")
+if st.sidebar.button("Tải lịch sử đoạn chat , lên giao diện"):
+    if add_selectbox == "không dùng dữ liệu":
+        st.sidebar.error("hãy trọn 1 tệp dữ liệu khác")
+    else:
+        file_path  = os.path.join(DATA_DIR,add_selectbox)
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as file:
+                st.session_state.messages = json.load(file) 
+                st.sidebar.success("load lịch sử đoạn chat thành công")
+                
+# Hiển thị toàn bộ lịch sử chat ngay lập tức
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+#--------------------- /load chat history on interface -----------------------
+      
+
+                
         
         
 
+#---------------------save history chat------------------------------
+if st.sidebar.button("Lưu đoạn lịch sử đoạn chat"):
+    if add_selectbox == "không dùng dữ liệu":
+        st.sidebar.error("hãy trọn 1 tệp dữ liệu khác")
+    else:
+        file_path  = os.path.join(DATA_DIR,add_selectbox)
+        if os.path.exists(file_path):
+            with open(file_path, 'w') as file:
+                json.dump(st.session_state.messages, file)
+                st.sidebar.success(f"lưu đoạn thành công vào {add_selectbox}")
+        
 
-#--------------------------------------------------
+#---------------------/save history chat------------------------------
 
 
 
-# Initialize session state for messages
-if "messages" not in st.session_state:
-    st.session_state.messages = []
 
-# Initialize session state for name if not already set
-if "name" not in st.session_state:
-    st.session_state.name = ""  # Default value
+
+#------------------------------------------------------------------------------------------------
+
+# Add a slider to the sidebar:
+add_slider = st.sidebar.slider(
+    'Select a range of values',
+    0.0, 100.0, (25.0, 75.0)
+)
 
 
 
@@ -120,35 +201,12 @@ st.write(f'You selected: {options}')
 if st.checkbox("Show dataframe"):
     st.write(dataframe2)
 
-# Text input for name
-st.text_input("Your name", key="name")  
-
-# Add a selectbox to the sidebar:
-add_selectbox = st.sidebar.selectbox(
-    'How would you like to be contacted?',
-    ('Email', 'Home phone', 'Mobile phone')
-)
-
-# Add a slider to the sidebar:
-add_slider = st.sidebar.slider(
-    'Select a range of values',
-    0.0, 100.0, (25.0, 75.0)
-)
-
-# Add an input to the sidebar:
-add_input = st.sidebar.text_input("Enter value", key="huyr")
-
-if "huyr" not in st.session_state:
-    st.session_state.huyr = ""  # Gán giá trị mặc định cho huyr
-
 choose = st.radio("Choose house", ("Gryffindor", "Ravenclaw", "Hufflepuff", "Slytherin"))
 st.write(f'Your house choice: {choose}')
 
-#------------------------------------------------------------------------------------------------
 x = st.slider('x')  # 👈 this is a widget
 st.write(x, 'squared is', x * x)
 
-st.title("Interface Chatbox with Streamlit")
 st.write(df)
 st.dataframe(dataframe.style.highlight_max(axis=0))
 st.line_chart(chart_data)
