@@ -11,10 +11,10 @@ headers = {"Content-Type": "application/json"}
 # model = "llama3.1:8b"
 model = "llama3.2:3b"
 
-def query_ollama(prompt):
+def query_ollama(prompt , history):
     payload = {
         "model": model,
-        "messages": [{"role": "user", "content": prompt}],
+        "messages": history,
         "stream": False  
     }
     try:
@@ -27,10 +27,18 @@ def query_ollama(prompt):
     except Exception as e:
         return f"Lỗi khi gọi API: {str(e)}"
 
+if "messages" not in st.session_state:
+    st.session_state.messages = []  # directory in python
 
+
+# Hiển thị toàn bộ lịch sử chat
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
 
 prompt = st.chat_input("Nhập câu hỏi của bạn vào đây !!")
+
 
 if prompt:
     with st.chat_message("user"):
@@ -43,8 +51,9 @@ if prompt:
       
     
     with st.chat_message("assistant"):
+        
         with st.spinner("Đang xử lý ..."):
-            response = query_ollama(prompt=prompt)
+            response = query_ollama(prompt=prompt , history=st.session_state.messages)
             
         full_response = ""
         holder = st.empty()
@@ -53,24 +62,14 @@ if prompt:
                     full_response += word + " "
                     time.sleep(0.1)
                     holder.markdown(full_response + "👋")
-        holder.markdown(full_response)
+        holder.markdown(response)
                 
         st.session_state.messages.append({
                     "role": "assistant",
-                    "content": prompt
+                    "content": response
                 })
-        st.session_state.messages.append(
-                    {
-                        "role":"assistant" ,
-                        "content":response
-                    }
-                )    
-            
         
-            
-    
-
-
+        
 
 
 #--------------------------------------------------
